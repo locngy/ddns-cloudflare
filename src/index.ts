@@ -16,17 +16,6 @@ interface Error {
 	message: string;
 }
 
-interface DnsRecord {
-	comment: string | null;
-	name: string;
-	proxied: boolean;
-	settings: any;
-	tags: any;
-	ttl: number;
-	content: string;
-	type: string;
-}
-
 enum UpdateStatus {
 	OK = 200,
 	BAD_REQUEST = 400,
@@ -35,7 +24,6 @@ enum UpdateStatus {
 
 class CloudflareDnsUpdater {
 	public static CLOUDFLARE_URL = 'https://api.cloudflare.com/client/v4/zones';
-	public static RECORD_FIELDS = new Set(['comment', 'name', 'proxied', 'settings', 'tags', 'ttl', 'content', 'type']);
 	private apiToken: string = '';
 	private ip: string = '';
 	private ipType: string = '';
@@ -85,7 +73,7 @@ class CloudflareDnsUpdater {
 		return { success: true, id, error: '', record: Array.isArray(content.result) ? content.result[0] : null };
 	}
 
-	private async updateDnsRecord(parameters: string, record: DnsRecord): Promise<{ success: boolean; error: string }> {
+	private async updateDnsRecord(parameters: string, record: any): Promise<{ success: boolean; error: string }> {
 		const options = {
 			method: 'PUT',
 			body: JSON.stringify(record),
@@ -154,12 +142,6 @@ class CloudflareDnsUpdater {
 				if (!record.id || !record.record) {
 					errors.push(`Error: dns_record_id not found for ${hostname}`);
 					continue;
-				}
-
-				for (const field in record.record) {
-					if (!CloudflareDnsUpdater.RECORD_FIELDS.has(field)) {
-						delete record.record[field];
-					}
 				}
 
 				record.record.content = this.ip;
