@@ -16,6 +16,17 @@ interface Error {
 	message: string;
 }
 
+interface DnsRecord {
+	comment: string | null;
+	name: string;
+	proxied: boolean;
+	settings: any;
+	tags: any;
+	ttl: number;
+	content: string;
+	type: string;
+}
+
 enum UpdateStatus {
 	OK = 200,
 	BAD_REQUEST = 400,
@@ -24,6 +35,7 @@ enum UpdateStatus {
 
 class CloudflareDnsUpdater {
 	public static CLOUDFLARE_URL = 'https://api.cloudflare.com/client/v4/zones';
+	public static RECORD_FIELDS = new Set(['comment', 'name', 'proxied', 'settings', 'tags', 'ttl', 'content', 'type']);
 	private apiToken: string = '';
 	private ip: string = '';
 	private ipType: string = '';
@@ -50,6 +62,10 @@ class CloudflareDnsUpdater {
 		return ipv6Regex.test(ipv6);
 	}
 
+	private extractError(content: CloudflareResponse): string {
+		return Array.isArray(content.errors) ? content.errors[0]?.message || 'Unknown error' : 'Unknown error';
+	}
+
 	private async fetch(parameters: string, options: RequestInit): Promise<CloudflareResponse> {
 		options.headers = {
 			...options.headers,
@@ -60,23 +76,19 @@ class CloudflareDnsUpdater {
 		return await response.json();
 	}
 
-	private extractError(content: CloudflareResponse): string {
-		return Array.isArray(content.errors) ? content.errors[0]?.message || 'Unknown error' : 'Unknown error';
-	}
-
-	private async getRecordId(parameters: string): Promise<{ success: boolean; id: string | null; error: string }> {
+	private async getRecordId(parameters: string): Promise<{ success: boolean; id: string | null; error: string; record: any }> {
 		const content = await this.fetch(parameters, {});
 		if (!content.success) {
-			return { success: false, id: null, error: this.extractError(content) };
+			return { success: false, id: null, error: this.extractError(content), record: null };
 		}
 		const id = Array.isArray(content.result) ? content.result[0]?.id || null : content.result?.id || null;
-		return { success: true, id, error: '' };
+		return { success: true, id, error: '', record: Array.isArray(content.result) ? content.result[0] : null };
 	}
 
-	private async updateDnsRecord(hostname: string, parameters: string): Promise<{ success: boolean; error: string }> {
+	private async updateDnsRecord(parameters: string, record: DnsRecord): Promise<{ success: boolean; error: string }> {
 		const options = {
 			method: 'PUT',
-			body: JSON.stringify({ name: hostname, type: this.ipType, content: this.ip }),
+			body: JSON.stringify(record),
 		};
 		const content = await this.fetch(parameters, options);
 		if (!content.success) return { success: false, error: this.extractError(content) };
@@ -139,14 +151,20 @@ class CloudflareDnsUpdater {
 					errors.push(`Error: dns_record_id fetching for ${hostname} ${record.error}`);
 					continue;
 				}
-				if (!record.id) {
+				if (!record.id || !record.record) {
 					errors.push(`Error: dns_record_id not found for ${hostname}`);
 					continue;
 				}
 
-				const dnsRecordId = record.id;
-				dnsRecordParam = `/${zoneId}/dns_records/${dnsRecordId}`;
-				record = await this.updateDnsRecord(hostname, dnsRecordParam);
+				for (const field in record.record) {
+					if (!CloudflareDnsUpdater.RECORD_FIELDS.has(field)) {
+						delete record.record[field];
+					}
+				}
+
+				record.record.content = this.ip;
+				dnsRecordParam = `/${zoneId}/dns_records/${record.id}`;
+				record = await this.updateDnsRecord(dnsRecordParam, record.record);
 				if (!record.success) {
 					errors.push(`Error: updating for ${hostname} ${record.error}`);
 					continue;
