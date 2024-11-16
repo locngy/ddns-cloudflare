@@ -1,13 +1,12 @@
 {
   "name": "ddns-cloudflare",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "test": "vitest",
-    "cf-typegen": "wrangler types"
+    "deploy": "npx wrangler deploy",
+    "dev": "npx wrangler dev",
+    "start": "npx wrangler dev",
+    "cf-typegen": "npx wrangler types"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.5.2",

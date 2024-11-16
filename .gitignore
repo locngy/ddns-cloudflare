@@ -170,3 +170,13 @@ dist
 
 .dev.vars
 .wrangler/
+
+# Test scripts
+*.sh
+
+# Mac
+.DS_Store
+
+# Other
+package-lock.json
+
