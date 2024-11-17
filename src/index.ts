@@ -117,7 +117,8 @@ class CloudflareDnsUpdater {
 			for (let hostname of this.hostnames) {
 				if ((hostname = hostname.trim()) === '') continue;
 
-				const domain = hostname.includes('.') ? hostname.split('.').slice(1).join('.') : hostname;
+				const parts = hostname.split('.');
+				const domain = parts.length < 2 ? hostname : `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
 				let zoneId = zoneIdCache.get(domain);
 				if (!zoneId) {
 					record = await this.getRecordId(`?name=${domain}`);
