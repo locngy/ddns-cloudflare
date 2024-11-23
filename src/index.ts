@@ -162,7 +162,7 @@ class CloudflareDnsUpdater {
 
 			if (successes.length > 0) {
 				if (message.length > 0) message += '\n';
-				message = `${message}${successes.join('\n')}`;
+				message += successes.join('\n');
 			}
 		} catch (error) {
 			console.log('Internal server error:', {
